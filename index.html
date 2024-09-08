@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>圖書借閱系統</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
+    <style>
+      /* 按鈕選擇樣式 */
+      .selected {
+        background-color: #4CAF50; /* 綠色 */
+        color: white;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>圖書借閱系統</h1>
+      
+      <label>借閱者姓名: </label><input type="text" id="name">
+      
+      <h2>選擇借閱書籍</h2>
+      <div class="magazine-buttons">
+        <button id="natgeoBtn" onclick="toggleMagazine('國家地理雜誌', this)">國家地理雜誌</button>
+        <button id="scienceBtn" onclick="toggleMagazine('科學月刊', this)">科學月刊</button>
+      </div>
+
+      <label>期數: </label><input type="text" id="issueNumber" placeholder="輸入期數">
+      <button onclick="borrowBook()">借閱</button>
+      
+      <h2>掃描書籍條碼</h2>
+      <button onclick="scanBarcode()">掃描</button>
+      <video id="scanner"></video>
+      
+      <hr> <!-- 加上水平線分隔 -->
+      
+      <div class="return-section">
+        <h2>還書</h2>
+        <button onclick="loadBorrowedBooks()">顯示借閱書籍</button>
+        <div id="bookList"></div>
+        <button onclick="returnSelectedBooks()">歸還選擇的書籍</button>
+      </div>
+    </div>
+
+    <script>
+      let selectedMagazine = "";
+
+      // 切換雜誌選擇
+      function toggleMagazine(magazine, button) {
+        if (selectedMagazine === magazine) {
+          selectedMagazine = ""; // 取消選擇
+          button.classList.remove("selected");
+        } else {
+          selectedMagazine = magazine; // 選擇新雜誌
+          // 先取消所有按鈕選中狀態
+          document.getElementById("natgeoBtn").classList.remove("selected");
+          document.getElementById("scienceBtn").classList.remove("selected");
+          // 設置當前按鈕為選中狀態
+          button.classList.add("selected");
+        }
+      }
+
+      // 借閱書籍
+      function borrowBook() {
+        const name = document.getElementById('name').value;
+        const issueNumber = document.getElementById('issueNumber').value;
+
+        // 檢查是否填寫姓名
+        if (!name) {
+          alert('請填寫借閱者姓名');
+          return;
+        }
+
+        // 檢查是否選擇了雜誌
+        if (!selectedMagazine) {
+          alert('請選擇一本雜誌');
+          return;
+        }
+
+        if (!issueNumber) {
+          alert('請輸入期數');
+          return;
+        }
+
+        google.script.run.borrowBook(name, selectedMagazine, issueNumber);
+        alert('借閱成功');
+      }
+
+      // 使用 QuaggaJS 掃描條碼
+      function scanBarcode() {
+        Quagga.init({
+          inputStream: {
+            name: "Live",
+            type: "LiveStream",
+            target: document.querySelector('#scanner'),
+            constraints: {
+              facingMode: "environment"
+            }
+          },
+          decoder: {
+            readers: ["code_128_reader", "ean_reader", "upc_reader"]
+          }
+        }, function (err) {
+          if (err) {
+            console.error(err);
+            return;
+          }
+          Quagga.start();
+        });
+
+        Quagga.onDetected(function (result) {
+          const code = result.codeResult.code;
+          alert("掃描成功，條碼是：" + code);
+          Quagga.stop();
+          google.script.run.borrowBookWithBarcode(document.getElementById('name').value, code);
+        });
+      }
+
+      // 顯示借閱書籍
+      function loadBorrowedBooks() {
+        const name = document.getElementById('name').value;
+
+        if (!name) {
+          alert('請先輸入借閱者姓名');
+          return;
+        }
+
+        google.script.run.withSuccessHandler(showBooks).getBorrowedBooks(name);
+      }
+
+      // 顯示已借閱的書籍清單
+      function showBooks(books) {
+        const bookListDiv = document.getElementById('bookList');
+        bookListDiv.innerHTML = '';
+        books.forEach(function (book) {
+          const checkbox = document.createElement('input');
+          checkbox.type = 'checkbox';
+          checkbox.value = book;
+          bookListDiv.appendChild(checkbox);
+          bookListDiv.appendChild(document.createTextNode(book));
+          bookListDiv.appendChild(document.createElement('br'));
+        });
+      }
+
+      // 還書功能
+      function returnSelectedBooks() {
+        const name = document.getElementById('name').value; // 使用借閱者姓名
+        const checkboxes = document.querySelectorAll('#bookList input:checked');
+        const selectedBooks = Array.from(checkboxes).map(function (checkbox) {
+          return checkbox.value;
+        });
+
+        if (selectedBooks.length === 0) {
+          alert('請選擇要歸還的書籍');
+          return;
+        }
+
+        google.script.run.returnBook(name, selectedBooks);
+        alert('歸還成功');
+      }
+    </script>
+  </body>
+</html>

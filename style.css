@@ -1,0 +1,63 @@
+/* 手機友善的排版 */
+body {
+  font-family: Arial, sans-serif;
+  padding: 20px;
+  margin: 0;
+}
+
+h1, h2 {
+  text-align: center;
+}
+
+.container {
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+input[type="text"] {
+  width: 100%;
+  padding: 10px;
+  margin-bottom: 10px;
+  font-size: 1rem;
+  box-sizing: border-box;
+}
+
+button {
+  width: 100%;
+  padding: 10px;
+  margin: 10px 0;
+  font-size: 1rem;
+  cursor: pointer;
+}
+
+#issueNumber {
+  width: 100px; /* 縮短期數輸入框 */
+}
+
+.magazine-buttons {
+  display: flex;
+  justify-content: space-between;
+}
+
+.magazine-buttons button {
+  width: 48%;
+  font-size: 1rem;
+}
+
+#scanner {
+  width: 100%;
+  height: auto;
+  margin: 10px 0;
+}
+
+.hidden {
+  display: none;
+}
+
+/* 還書區背景分隔 */
+.return-section {
+  background-color: #f7f7f7;
+  padding: 20px;
+  border-radius: 10px;
+  margin-top: 20px;
+}
