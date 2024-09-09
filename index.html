@@ -3,37 +3,37 @@
   <head>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>圖書借閱系統</title>
-    <link rel="stylesheet" href="style.css">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
-    <style>
-      /* 按鈕選擇樣式 */
-      .selected {
-        background-color: #4CAF50; /* 綠色 */
-        color: white;
-      }
-    </style>
+    <link rel="stylesheet" href="style.css"> <!-- 引入外部CSS文件 -->
   </head>
   <body>
     <div class="container">
       <h1>圖書借閱系統</h1>
-      
-      <label>借閱者姓名: </label><input type="text" id="name">
-      
-      <h2>選擇借閱書籍</h2>
-      <div class="magazine-buttons">
-        <button id="natgeoBtn" onclick="toggleMagazine('國家地理雜誌', this)">國家地理雜誌</button>
-        <button id="scienceBtn" onclick="toggleMagazine('科學月刊', this)">科學月刊</button>
+
+      <!-- 雜誌借閱區域 -->
+      <div class="borrow-section">
+        <label>借閱者姓名: </label>
+        <input type="text" id="name">
+
+        <h2>選擇借閱書籍</h2>
+        <div class="magazine-buttons">
+          <button id="natgeoBtn" onclick="toggleMagazine('國家地理雜誌', this)" style="width: 49%">國家地理雜誌</button>
+          <button id="scienceBtn" onclick="toggleMagazine('科學月刊', this)" style="width: 49%">科學月刊</button>
+        </div>
+
+        <label>期數: </label>
+        <input type="text" id="issueNumber" placeholder="輸入期數">
+        <button onclick="borrowBook()">借閱</button>
       </div>
 
-      <label>期數: </label><input type="text" id="issueNumber" placeholder="輸入期數">
-      <button onclick="borrowBook()">借閱</button>
-      
-      <h2>掃描書籍條碼</h2>
-      <button onclick="scanBarcode()">掃描</button>
-      <video id="scanner"></video>
-      
+      <!-- 書籍掃描區域 -->
+      <div class="scan-section">
+        <h2>掃描書籍條碼</h2>
+        <button onclick="scanBarcode()">掃描</button>
+        <video id="scanner"></video>
+      </div>
+
       <hr> <!-- 加上水平線分隔 -->
-      
+
       <div class="return-section">
         <h2>還書</h2>
         <button onclick="loadBorrowedBooks()">顯示借閱書籍</button>
@@ -52,7 +52,7 @@
           button.classList.remove("selected");
         } else {
           selectedMagazine = magazine; // 選擇新雜誌
-          // 先取消所有按鈕選中狀態
+          // 取消其他按鈕的選中狀態
           document.getElementById("natgeoBtn").classList.remove("selected");
           document.getElementById("scienceBtn").classList.remove("selected");
           // 設置當前按鈕為選中狀態
@@ -60,63 +60,41 @@
         }
       }
 
-      // 借閱書籍
+      // 借閱書籍功能
       function borrowBook() {
         const name = document.getElementById('name').value;
         const issueNumber = document.getElementById('issueNumber').value;
 
-        // 檢查是否填寫姓名
-        if (!name) {
-          alert('請填寫借閱者姓名');
+        // 檢查必填項
+        if (!name || !selectedMagazine || !issueNumber) {
+          alert('請填寫所有必要信息');
           return;
         }
 
-        // 檢查是否選擇了雜誌
-        if (!selectedMagazine) {
-          alert('請選擇一本雜誌');
-          return;
-        }
-
-        if (!issueNumber) {
-          alert('請輸入期數');
-          return;
-        }
-
-        google.script.run.borrowBook(name, selectedMagazine, issueNumber);
-        alert('借閱成功');
-      }
-
-      // 使用 QuaggaJS 掃描條碼
-      function scanBarcode() {
-        Quagga.init({
-          inputStream: {
-            name: "Live",
-            type: "LiveStream",
-            target: document.querySelector('#scanner'),
-            constraints: {
-              facingMode: "environment"
-            }
+        const scriptURL = "https://script.google.com/macros/s/AKfycbzMUdGPXYe007P2ZXi38vXwhvB5-dJtsYoOBTjuY_vh4QY8OarphUmrg1edQK1T4GkMpQ/exec";
+        fetch(scriptURL, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
           },
-          decoder: {
-            readers: ["code_128_reader", "ean_reader", "upc_reader"]
-          }
-        }, function (err) {
-          if (err) {
-            console.error(err);
-            return;
-          }
-          Quagga.start();
-        });
-
-        Quagga.onDetected(function (result) {
-          const code = result.codeResult.code;
-          alert("掃描成功，條碼是：" + code);
-          Quagga.stop();
-          google.script.run.borrowBookWithBarcode(document.getElementById('name').value, code);
+          body: JSON.stringify({
+            name: name,
+            magazine: selectedMagazine,
+            issueNumber: issueNumber
+          })
+        })
+        .then(response => response.json())
+        .then(data => {
+          console.log('Success:', data);
+          alert('借閱成功');
+        })
+        .catch((error) => {
+          console.error('Error:', error);
+          alert('借閱失敗，請檢查後端設置');
         });
       }
 
-      // 顯示借閱書籍
+      // 顯示借閱書籍功能
       function loadBorrowedBooks() {
         const name = document.getElementById('name').value;
 
@@ -125,28 +103,34 @@
           return;
         }
 
-        google.script.run.withSuccessHandler(showBooks).getBorrowedBooks(name);
-      }
-
-      // 顯示已借閱的書籍清單
-      function showBooks(books) {
-        const bookListDiv = document.getElementById('bookList');
-        bookListDiv.innerHTML = '';
-        books.forEach(function (book) {
-          const checkbox = document.createElement('input');
-          checkbox.type = 'checkbox';
-          checkbox.value = book;
-          bookListDiv.appendChild(checkbox);
-          bookListDiv.appendChild(document.createTextNode(book));
-          bookListDiv.appendChild(document.createElement('br'));
+        const scriptURL = "https://script.google.com/macros/s/AKfycbzMUdGPXYe007P2ZXi38vXwhvB5-dJtsYoOBTjuY_vh4QY8OarphUmrg1edQK1T4GkMpQ/exec";
+        fetch(scriptURL + `?name=${encodeURIComponent(name)}`, {
+          method: 'GET',
+        })
+        .then(response => response.json())
+        .then(books => {
+          const bookListDiv = document.getElementById('bookList');
+          bookListDiv.innerHTML = '';
+          books.forEach(function(book) {
+            const checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.value = book;
+            bookListDiv.appendChild(checkbox);
+            bookListDiv.appendChild(document.createTextNode(book));
+            bookListDiv.appendChild(document.createElement('br'));
+          });
+        })
+        .catch((error) => {
+          console.error('Error:', error);
+          alert('無法獲取借閱書籍');
         });
       }
 
       // 還書功能
       function returnSelectedBooks() {
-        const name = document.getElementById('name').value; // 使用借閱者姓名
+        const name = document.getElementById('name').value;
         const checkboxes = document.querySelectorAll('#bookList input:checked');
-        const selectedBooks = Array.from(checkboxes).map(function (checkbox) {
+        const selectedBooks = Array.from(checkboxes).map(function(checkbox) {
           return checkbox.value;
         });
 
@@ -155,8 +139,27 @@
           return;
         }
 
-        google.script.run.returnBook(name, selectedBooks);
-        alert('歸還成功');
+        const scriptURL = "https://script.google.com/macros/s/AKfycbzMUdGPXYe007P2ZXi38vXwhvB5-dJtsYoOBTjuY_vh4QY8OarphUmrg1edQK1T4GkMpQ/exec";
+        fetch(scriptURL, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            name: name,
+            books: selectedBooks,
+            action: "return"
+          })
+        })
+        .then(response => response.json())
+        .then(data => {
+          console.log('Success:', data);
+          alert('還書成功');
+        })
+        .catch((error) => {
+          console.error('Error:', error);
+          alert('還書失敗');
+        });
       }
     </script>
   </body>
